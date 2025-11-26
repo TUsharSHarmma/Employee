@@ -6,7 +6,8 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "predeploy": "npm run build"
+    "predeploy": "npm run build",
+    "preinstall": "npx npm-force-resolutions"
   },
   "dependencies": {
     "react": "^18.2.0",
