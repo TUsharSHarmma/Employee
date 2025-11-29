@@ -11,79 +11,36 @@ const generateToken = (id) => {
 
 
 
-// @desc    Forgot password - Send reset email
-// @route   POST /api/auth/forgot-password
-// @access  Public
 export const forgotPassword = async (req, res) => {
   try {
     const { email } = req.body;
 
-    console.log('Forgot password request for:', email);
-
-    if (!email) {
-      return res.status(400).json({
-        success: false,
-        message: 'Email is required'
-      });
-    }
+    if (!email) return res.status(400).json({ success: false, message: 'Email is required' });
 
     const user = await User.findOne({ email: email.toLowerCase() });
-    
-    // Always return success to prevent email enumeration
-    if (!user) {
-      console.log('No user found with email:', email);
-      return res.json({
-        success: true,
-        message: 'If an account with that email exists, reset instructions have been sent'
-      });
-    }
 
-    // Generate reset token (simple random string)
+    // Prevent email enumeration
+    if (!user) return res.json({ success: true, message: 'If an account with that email exists, reset instructions have been sent' });
+
+    // Generate token
     const resetToken = crypto.randomBytes(32).toString('hex');
-    
-    // Save reset token to user (you might want to add these fields to your User model)
     user.resetPasswordToken = resetToken;
     user.resetPasswordExpire = Date.now() + 3600000; // 1 hour
-    
     await user.save();
-    console.log('Reset token generated for user:', user.email);
 
-    // Send reset email
-    try {
-      const resetUrl = `${process.env.CLIENT_URL || 'http://localhost:3000'}/reset-password?token=${resetToken}`;
-      
-      await sendEmail(
-        user.email,
-        'Password Reset Instructions - Employee Management System',
-        emailTemplates.passwordReset(user, resetUrl)
-      );
-      
-      console.log('Reset email sent to:', user.email);
-    } catch (emailError) {
-      console.error('Failed to send reset email:', emailError);
-      return res.status(500).json({
-        success: false,
-        message: 'Failed to send reset email. Please try again.'
-      });
-    }
+    // Send email
+    const resetUrl = `${process.env.CLIENT_URL}/reset-password?token=${resetToken}`;
+    await sendEmail(user.email, 'Password Reset Instructions', emailTemplates.passwordReset(user, resetUrl));
 
-    res.json({
-      success: true,
-      message: 'Password reset instructions have been sent to your email'
-    });
+    res.json({ success: true, message: 'Password reset instructions have been sent to your email' });
 
   } catch (error) {
-    console.error('Forgot password error:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Server error during password reset'
-    });
+    console.error(error);
+    res.status(500).json({ success: false, message: 'Server error during password reset' });
   }
 };
 
-// @desc    Verify reset token
-// @route   GET /api/auth/verify-reset-token/:token
-// @access  Public
+// @desc Verify reset token
 export const verifyResetToken = async (req, res) => {
   try {
     const { token } = req.params;
@@ -93,85 +50,41 @@ export const verifyResetToken = async (req, res) => {
       resetPasswordExpire: { $gt: Date.now() }
     });
 
-    if (!user) {
-      return res.status(400).json({
-        success: false,
-        message: 'Invalid or expired reset token'
-      });
-    }
+    if (!user) return res.status(400).json({ success: false, message: 'Invalid or expired reset token' });
 
-    res.json({
-      success: true,
-      message: 'Token is valid'
-    });
+    res.json({ success: true, message: 'Token is valid' });
 
   } catch (error) {
-    console.error('Verify token error:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Server error'
-    });
+    console.error(error);
+    res.status(500).json({ success: false, message: 'Server error' });
   }
 };
 
-// @desc    Reset password
-// @route   POST /api/auth/reset-password
-// @access  Public
+// @desc Reset password
 export const resetPassword = async (req, res) => {
   try {
     const { token, password } = req.body;
 
-    console.log('Reset password request received');
+    if (!token || !password) return res.status(400).json({ success: false, message: 'Token and password are required' });
+    if (password.length < 6) return res.status(400).json({ success: false, message: 'Password must be at least 6 characters' });
 
-    if (!token || !password) {
-      return res.status(400).json({
-        success: false,
-        message: 'Token and password are required'
-      });
-    }
-
-    if (password.length < 6) {
-      return res.status(400).json({
-        success: false,
-        message: 'Password must be at least 6 characters'
-      });
-    }
-
-    // Find user with valid reset token
     const user = await User.findOne({
       resetPasswordToken: token,
       resetPasswordExpire: { $gt: Date.now() }
     });
 
-    if (!user) {
-      return res.status(400).json({
-        success: false,
-        message: 'Invalid or expired reset token'
-      });
-    }
+    if (!user) return res.status(400).json({ success: false, message: 'Invalid or expired reset token' });
 
-    console.log('Resetting password for user:', user.email);
-
-    // Update password and clear reset token
     user.password = password;
     user.resetPasswordToken = undefined;
     user.resetPasswordExpire = undefined;
-    
     await user.save();
 
-    console.log('Password reset successful for:', user.email);
-
-    res.json({
-      success: true,
-      message: 'Password reset successfully. You can now login with your new password.'
-    });
+    res.json({ success: true, message: 'Password reset successfully. You can now login with your new password.' });
 
   } catch (error) {
-    console.error('Reset password error:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Server error during password reset'
-    });
+    console.error(error);
+    res.status(500).json({ success: false, message: 'Server error during password reset' });
   }
 };
 
