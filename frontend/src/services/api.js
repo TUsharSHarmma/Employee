@@ -1,6 +1,7 @@
 import axios from 'axios';
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+// ⚠️ FIX THIS LINE - Change from localhost to your Render URL
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://employee-xxcg.onrender.com/api';
 
 // Create axios instance
 const api = axios.create({
@@ -8,6 +9,7 @@ const api = axios.create({
   headers: {
     'Content-Type': 'application/json',
   },
+  withCredentials: true, // Add this for CORS with credentials
 });
 
 // Request interceptor to add auth token
@@ -30,6 +32,7 @@ api.interceptors.response.use(
   (error) => {
     if (error.response?.status === 401) {
       localStorage.removeItem('token');
+      localStorage.removeItem('user');
       window.location.href = '/login';
     }
     return Promise.reject(error);
@@ -54,8 +57,6 @@ export const usersAPI = {
   createUser: (data) => api.post('/users', data),
   updateUser: (id, data) => api.put(`/users/${id}`, data),
   deleteUser: (id) => api.delete(`/users/${id}`),
-
-  // ✅ Added updateProfile function
   updateProfile: (data) => api.put('/users/profile/update', data),
 };
 

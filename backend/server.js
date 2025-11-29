@@ -12,7 +12,7 @@ import userRoutes from './routes/users.js';
 import plantRoutes from './routes/plants.js';
 
 // Import the email service
-import { sendEmail } from './services/emailService.js'; // Adjust path as needed
+import { sendEmail } from './utils/emailService.js'; // Adjust path as needed
 
 dotenv.config();
 connectDB();
@@ -22,29 +22,40 @@ const app = express();
 // --- SECURITY MIDDLEWARE ---
 app.use(helmet());
 
-// --- FIX FOR CORS (MOST IMPORTANT PART) ---
-const allowedOrigins = [
-  "https://employeeesmanage.vercel.app",
-  "http://localhost:3000",
-  "http://localhost:5173"
-];
-
+// --- FIXED CORS CONFIGURATION ---
 app.use(cors({
-  origin: allowedOrigins,
+  origin: function (origin, callback) {
+    // Allow requests with no origin (like mobile apps or curl requests)
+    if (!origin) return callback(null, true);
+    
+    const allowedOrigins = [
+      "https://employeeesmanage.vercel.app",
+      "http://localhost:3000",
+      "http://localhost:5173"
+    ];
+    
+    if (allowedOrigins.indexOf(origin) !== -1) {
+      callback(null, true);
+    } else {
+      console.log('Blocked by CORS:', origin);
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
   credentials: true,
   methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
-  allowedHeaders: ["Content-Type", "Authorization"]
+  allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With"]
 }));
 
-// Handle preflight OPTIONS before anything else
-app.options("*", cors());
+// Handle preflight requests
+app.options('*', cors());
 
 // --- RATE LIMITER ---
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 150,
   standardHeaders: true,
-  legacyHeaders: false
+  legacyHeaders: false,
+  skipSuccessfulRequests: false
 });
 app.use(limiter);
 
@@ -68,7 +79,7 @@ app.get("/api/health", (req, res) => {
   });
 });
 
-// --- DEBUG EMAIL ROUTE (ADD THIS) ---
+// --- DEBUG EMAIL ROUTE ---
 app.get("/api/debug-email", async (req, res) => {
   try {
     console.log('🔧 Testing email functionality...');
@@ -115,25 +126,48 @@ app.get("/api/debug-email", async (req, res) => {
   }
 });
 
-// --- FIXED: REMOVE FRONTEND CATCH-ALL COMPLETELY ---
+// --- ROOT ENDPOINT ---
+app.get("/", (req, res) => {
+  res.json({
+    success: true,
+    message: "Employee Management System API",
+    version: "1.0.0",
+    environment: process.env.NODE_ENV
+  });
+});
 
-// ❌ REMOVE THIS from your server:
-// app.get("*", ...)
+// --- 404 HANDLER ---
+app.use("*", (req, res) => {
+  res.status(404).json({
+    success: false,
+    message: "API endpoint not found"
+  });
+});
 
 // --- GLOBAL ERROR HANDLER ---
 app.use((err, req, res, next) => {
-  console.error(err);
+  console.error('Global Error Handler:', err);
+
+  // CORS error
+  if (err.message === 'Not allowed by CORS') {
+    return res.status(403).json({
+      success: false,
+      message: "CORS policy: Origin not allowed"
+    });
+  }
 
   if (!res.headersSent) {
     res.status(500).json({
       success: false,
       message: "Internal Server Error",
-      error: err.message
+      error: process.env.NODE_ENV === 'production' ? 'Something went wrong' : err.message
     });
   }
 });
 
 const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => {
-  console.log("Backend running on port", PORT);
+app.listen(PORT, '0.0.0.0', () => {
+  console.log(`🚀 Backend running on port ${PORT}`);
+  console.log(`🌐 Environment: ${process.env.NODE_ENV}`);
+  console.log(`🔗 Allowed origins: https://employeeesmanage.vercel.app`);
 });
