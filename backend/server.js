@@ -11,6 +11,9 @@ import attendanceRoutes from './routes/attendance.js';
 import userRoutes from './routes/users.js';
 import plantRoutes from './routes/plants.js';
 
+// Import the email service
+import { sendEmail } from './services/emailService.js'; // Adjust path as needed
+
 dotenv.config();
 connectDB();
 
@@ -63,6 +66,53 @@ app.get("/api/health", (req, res) => {
     environment: process.env.NODE_ENV,
     time: new Date().toISOString()
   });
+});
+
+// --- DEBUG EMAIL ROUTE (ADD THIS) ---
+app.get("/api/debug-email", async (req, res) => {
+  try {
+    console.log('🔧 Testing email functionality...');
+    console.log('Environment:', process.env.NODE_ENV);
+    console.log('Email User:', process.env.EMAIL_USER);
+    console.log('Client URL:', process.env.CLIENT_URL);
+    
+    await sendEmail(
+      'tusharsharmaprayagraj@gmail.com', 
+      'Test Email from Production - Employee Management System',
+      `
+      <div style="font-family: Arial, sans-serif; padding: 20px;">
+        <h1 style="color: #2563eb;">✅ Test Email Successful!</h1>
+        <p>If you're reading this, your email service is working perfectly in <strong>${process.env.NODE_ENV}</strong> environment!</p>
+        <div style="background: #f3f4f6; padding: 15px; border-radius: 8px; margin: 15px 0;">
+          <h3>Email Configuration:</h3>
+          <ul>
+            <li><strong>Service:</strong> ${process.env.EMAIL_SERVICE}</li>
+            <li><strong>From:</strong> ${process.env.EMAIL_USER}</li>
+            <li><strong>Client URL:</strong> ${process.env.CLIENT_URL}</li>
+            <li><strong>Environment:</strong> ${process.env.NODE_ENV}</li>
+          </ul>
+        </div>
+        <p>Your password reset functionality should now work correctly! 🎉</p>
+      </div>
+      `
+    );
+    
+    res.json({ 
+      success: true, 
+      message: 'Test email sent successfully to tusharsharmaprayagraj@gmail.com',
+      environment: process.env.NODE_ENV,
+      timestamp: new Date().toISOString()
+    });
+    
+  } catch (error) {
+    console.error('❌ Email test failed:', error);
+    res.status(500).json({ 
+      success: false, 
+      error: error.message,
+      details: 'Check Render logs for detailed error information',
+      environment: process.env.NODE_ENV
+    });
+  }
 });
 
 // --- FIXED: REMOVE FRONTEND CATCH-ALL COMPLETELY ---
