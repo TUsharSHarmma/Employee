@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { usersAPI, plantsAPI, attendanceAPI } from '../services/api';
 import { 
@@ -17,6 +18,7 @@ import {
 
 const Dashboard = () => {
   const { user, isAdmin } = useAuth();
+  const navigate = useNavigate();
   const [stats, setStats] = useState({
     totalEmployees: 0,
     totalPlants: 0,
@@ -133,6 +135,10 @@ const Dashboard = () => {
       case 'late': return AlertCircle;
       default: return Activity;
     }
+  };
+
+  const handleQuickActionClick = (path) => {
+    navigate(path);
   };
 
   const statsConfig = [
@@ -344,7 +350,7 @@ const Dashboard = () => {
                 return (
                   <button
                     key={index}
-                    onClick={() => window.location.href = action.path}
+                    onClick={() => handleQuickActionClick(action.path)}
                     className="flex items-center space-x-3 p-3 rounded-lg border border-gray-200 hover:border-primary-300 hover:bg-primary-50 transition-all duration-200 group"
                   >
                     <div className={`p-2 rounded-lg bg-${action.color}-100 group-hover:bg-${action.color}-200 transition-colors`}>
