@@ -291,7 +291,7 @@ const Dashboard = () => {
         <div className="lg:col-span-2 bg-white rounded-xl shadow-sm border border-gray-200 p-6">
           <div className="flex items-center justify-between mb-6">
             <h3 className="text-lg font-semibold text-gray-900">
-              Recent Activities
+              Recent Activitie
             </h3>
             <span className="text-sm text-gray-500">
               Today • {recentActivities.length} activities
