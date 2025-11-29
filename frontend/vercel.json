@@ -2,7 +2,7 @@
   "version": 2,
   "builds": [
     {
-      "src": "package.json",
+      "src": "frontend/package.json",
       "use": "@vercel/static-build",
       "config": {
         "distDir": "dist"
@@ -12,8 +12,7 @@
   "routes": [
     {
       "src": "/api/(.*)",
-      "dest": "https://employee-xxcg.onrender.com/api/$1",
-      "methods": ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"]
+      "dest": "https://employee-xxcg.onrender.com/api/$1"
     },
     {
       "src": "/(.*)",
