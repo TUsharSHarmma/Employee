@@ -36,21 +36,14 @@ api.interceptors.response.use(
   }
 );
 
-// Attendance API - UPDATED WITH ALL FEATURES
+// Attendance API
 export const attendanceAPI = {
-  // Basic punch in/out
   punchIn: (data) => api.post('/attendance/punch-in', data),
   punchOut: (data) => api.post('/attendance/punch-out', data),
-  
-  // Get attendance records
   getAttendance: (params) => api.get('/attendance', { params }),
   getAttendanceById: (id) => api.get(`/attendance/${id}`),
-  
-  // Edit/Delete functionality
   updateAttendance: (id, data) => api.put(`/attendance/${id}`, data),
   deleteAttendance: (id, data) => api.delete(`/attendance/${id}`, { data }),
-  
-  // Admin specific routes
   getAllAttendance: (params) => api.get('/attendance/admin/all', { params }),
 };
 
@@ -61,6 +54,9 @@ export const usersAPI = {
   createUser: (data) => api.post('/users', data),
   updateUser: (id, data) => api.put(`/users/${id}`, data),
   deleteUser: (id) => api.delete(`/users/${id}`),
+
+  // ✅ Added updateProfile function
+  updateProfile: (data) => api.put('/users/profile/update', data),
 };
 
 // Plants API
