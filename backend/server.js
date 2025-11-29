@@ -3,6 +3,8 @@ import cors from 'cors';
 import helmet from 'helmet';
 import rateLimit from 'express-rate-limit';
 import dotenv from 'dotenv';
+import path from 'path';
+import { fileURLToPath } from 'url';
 import connectDB from './config/database.js';
 
 // Route imports
@@ -11,163 +13,149 @@ import attendanceRoutes from './routes/attendance.js';
 import userRoutes from './routes/users.js';
 import plantRoutes from './routes/plants.js';
 
-// Import the email service
-import { sendEmail } from './utils/emailService.js'; // Adjust path as needed
-
+// Load env vars
 dotenv.config();
+
+// Connect to database
 connectDB();
 
 const app = express();
 
-// --- SECURITY MIDDLEWARE ---
+// Fix for ES modules __dirname
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+// Security middleware
 app.use(helmet());
 
-// --- FIXED CORS CONFIGURATION ---
-app.use(cors({
-  origin: function (origin, callback) {
-    // Allow requests with no origin (like mobile apps or curl requests)
-    if (!origin) return callback(null, true);
-    
-    const allowedOrigins = [
-      "https://employeeesmanage.vercel.app",
-      "http://localhost:3000",
-      "http://localhost:5173"
-    ];
-    
-    if (allowedOrigins.indexOf(origin) !== -1) {
-      callback(null, true);
-    } else {
-      console.log('Blocked by CORS:', origin);
-      callback(new Error('Not allowed by CORS'));
-    }
+// Rate limiting
+const limiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: process.env.NODE_ENV === 'production' ? 200 : 100,
+  message: {
+    success: false,
+    message: 'Too many requests, please try again later.'
   },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+app.use(limiter);
+
+// CORS - Updated with your actual Vercel URL
+app.use(cors({
+  origin: [
+    'https://employeeesmanage.vercel.app',
+    'http://localhost:3000',
+    'http://localhost:5173'
+  ],
   credentials: true,
-  methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
-  allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With"]
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
 }));
 
 // Handle preflight requests
 app.options('*', cors());
 
-// --- RATE LIMITER ---
-const limiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  max: 150,
-  standardHeaders: true,
-  legacyHeaders: false,
-  skipSuccessfulRequests: false
-});
-app.use(limiter);
-
-// --- BODY PARSER ---
-app.use(express.json({ limit: "10mb" }));
+// Body parser middleware
+app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: false }));
 
-// --- API ROUTES ---
-app.use("/api/auth", authRoutes);
-app.use("/api/attendance", attendanceRoutes);
-app.use("/api/users", userRoutes);
-app.use("/api/plants", plantRoutes);
+// API Routes
+app.use('/api/auth', authRoutes);
+app.use('/api/attendance', attendanceRoutes);
+app.use('/api/users', userRoutes);
+app.use('/api/plants', plantRoutes);
 
-// --- HEALTH CHECK ---
-app.get("/api/health", (req, res) => {
+// Health check route
+app.get('/api/health', (req, res) => {
   res.json({
     success: true,
-    message: "Server running",
+    message: 'Server is running',
+    timestamp: new Date().toISOString(),
     environment: process.env.NODE_ENV,
-    time: new Date().toISOString()
+    client: 'https://employeeesmanage.vercel.app'
   });
 });
 
-// --- DEBUG EMAIL ROUTE ---
-app.get("/api/debug-email", async (req, res) => {
-  try {
-    console.log('🔧 Testing email functionality...');
-    console.log('Environment:', process.env.NODE_ENV);
-    console.log('Email User:', process.env.EMAIL_USER);
-    console.log('Client URL:', process.env.CLIENT_URL);
-    
-    await sendEmail(
-      'tusharsharmaprayagraj@gmail.com', 
-      'Test Email from Production - Employee Management System',
-      `
-      <div style="font-family: Arial, sans-serif; padding: 20px;">
-        <h1 style="color: #2563eb;">✅ Test Email Successful!</h1>
-        <p>If you're reading this, your email service is working perfectly in <strong>${process.env.NODE_ENV}</strong> environment!</p>
-        <div style="background: #f3f4f6; padding: 15px; border-radius: 8px; margin: 15px 0;">
-          <h3>Email Configuration:</h3>
-          <ul>
-            <li><strong>Service:</strong> ${process.env.EMAIL_SERVICE}</li>
-            <li><strong>From:</strong> ${process.env.EMAIL_USER}</li>
-            <li><strong>Client URL:</strong> ${process.env.CLIENT_URL}</li>
-            <li><strong>Environment:</strong> ${process.env.NODE_ENV}</li>
-          </ul>
-        </div>
-        <p>Your password reset functionality should now work correctly! 🎉</p>
-      </div>
-      `
-    );
-    
-    res.json({ 
-      success: true, 
-      message: 'Test email sent successfully to tusharsharmaprayagraj@gmail.com',
-      environment: process.env.NODE_ENV,
-      timestamp: new Date().toISOString()
-    });
-    
-  } catch (error) {
-    console.error('❌ Email test failed:', error);
-    res.status(500).json({ 
-      success: false, 
-      error: error.message,
-      details: 'Check Render logs for detailed error information',
-      environment: process.env.NODE_ENV
-    });
-  }
-});
-
-// --- ROOT ENDPOINT ---
-app.get("/", (req, res) => {
+// Root route
+app.get('/', (req, res) => {
   res.json({
     success: true,
-    message: "Employee Management System API",
-    version: "1.0.0",
-    environment: process.env.NODE_ENV
+    message: 'Employee Management API is running',
+    backend: 'https://employee-xxcg.onrender.com',
+    frontend: 'https://employeeesmanage.vercel.app',
+    health_check: 'https://employee-xxcg.onrender.com/api/health'
   });
 });
 
-// --- 404 HANDLER ---
-app.use("*", (req, res) => {
-  res.status(404).json({
+// ✅ CRITICAL: Catch-all handler for client-side routing
+app.get('*', (req, res) => {
+  // If it's an API route that doesn't exist, return 404
+  if (req.path.startsWith('/api/')) {
+    return res.status(404).json({
+      success: false,
+      message: 'API route not found'
+    });
+  }
+  
+  // For all non-API routes (client-side routes)
+  res.json({
     success: false,
-    message: "API endpoint not found"
+    message: 'Route not found - this is a client-side route handled by frontend',
+    frontend_url: 'https://employeeesmanage.vercel.app' + req.path
   });
 });
 
-// --- GLOBAL ERROR HANDLER ---
+// Error handling middleware
 app.use((err, req, res, next) => {
-  console.error('Global Error Handler:', err);
-
-  // CORS error
-  if (err.message === 'Not allowed by CORS') {
-    return res.status(403).json({
+  console.error(err.stack);
+  
+  // Mongoose validation error
+  if (err.name === 'ValidationError') {
+    const messages = Object.values(err.errors).map(val => val.message);
+    return res.status(400).json({
       success: false,
-      message: "CORS policy: Origin not allowed"
+      message: 'Validation Error',
+      errors: messages
+    });
+  }
+  
+  // Mongoose duplicate key error
+  if (err.code === 11000) {
+    const field = Object.keys(err.keyValue)[0];
+    return res.status(400).json({
+      success: false,
+      message: `${field} already exists`
+    });
+  }
+  
+  // JWT errors
+  if (err.name === 'JsonWebTokenError') {
+    return res.status(401).json({
+      success: false,
+      message: 'Invalid token'
+    });
+  }
+  
+  if (err.name === 'TokenExpiredError') {
+    return res.status(401).json({
+      success: false,
+      message: 'Token expired'
     });
   }
 
-  if (!res.headersSent) {
-    res.status(500).json({
-      success: false,
-      message: "Internal Server Error",
-      error: process.env.NODE_ENV === 'production' ? 'Something went wrong' : err.message
-    });
-  }
+  res.status(500).json({
+    success: false,
+    message: 'Something went wrong!',
+    error: process.env.NODE_ENV === 'production' ? {} : err.stack
+  });
 });
 
 const PORT = process.env.PORT || 5000;
-app.listen(PORT, '0.0.0.0', () => {
-  console.log(`🚀 Backend running on port ${PORT}`);
-  console.log(`🌐 Environment: ${process.env.NODE_ENV}`);
-  console.log(`🔗 Allowed origins: https://employeeesmanage.vercel.app`);
+
+app.listen(PORT, () => {
+  console.log(`Server running on port ${PORT}`);
+  console.log(`Backend URL: https://employee-xxcg.onrender.com`);
+  console.log(`Frontend URL: https://employeeesmanage.vercel.app`);
+  console.log(`Health check: https://employee-xxcg.onrender.com/api/health`);
 });

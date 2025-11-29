@@ -3,103 +3,29 @@ import dotenv from 'dotenv';
 
 dotenv.config();
 
-// Enhanced transporter with better error handling and production settings
-const createTransporter = () => {
-  try {
-    console.log('🔧 Creating email transporter...');
-    console.log('Email Service:', process.env.EMAIL_SERVICE);
-    console.log('Email User:', process.env.EMAIL_USER);
-    console.log('Client URL:', process.env.CLIENT_URL);
-    console.log('NODE_ENV:', process.env.NODE_ENV);
-    
-    // Check if required environment variables are set
-    if (!process.env.EMAIL_USER || !process.env.EMAIL_PASS) {
-      throw new Error('❌ Email credentials are missing in environment variables');
-    }
-
-    if (process.env.EMAIL_PASS.length !== 16) {
-      console.warn('⚠️  Warning: EMAIL_PASS should be a 16-character Gmail App Password, not your regular Gmail password');
-    }
-
-    const transporter = nodemailer.createTransport({
-      service: process.env.EMAIL_SERVICE || 'gmail',
-      auth: {
-        user: process.env.EMAIL_USER,
-        pass: process.env.EMAIL_PASS,
-      },
-      // Additional settings for better production reliability
-      pool: true,
-      maxConnections: 3,
-      maxMessages: 100,
-      rateLimit: 10,
-      // Timeout settings
-      connectionTimeout: 60000,
-      greetingTimeout: 30000,
-      socketTimeout: 60000,
-    });
-
-    return transporter;
-  } catch (error) {
-    console.error('❌ Error creating email transporter:', error);
-    throw error;
-  }
-};
-
-const transport = createTransporter();
-
-// Verify transporter on startup
-transport.verify((error, success) => {
-  if (error) {
-    console.error('❌ Email transporter verification FAILED:', error);
-    console.error('💡 Solution: Check if you are using Gmail App Password (16 characters)');
-    console.error('💡 Go to: Google Account → Security → App Passwords');
-  } else {
-    console.log('✅ Email transporter is ready to send messages');
-  }
+const transport = nodemailer.createTransport({
+  service: process.env.EMAIL_SERVICE,
+  auth: {
+    user: process.env.EMAIL_USER,
+    pass: process.env.EMAIL_PASS,
+  },
 });
 
 export const sendEmail = async (to, subject, html) => {
   try {
-    console.log(`📧 Attempting to send email to: ${to}`);
-    console.log(`📨 Using sender: ${process.env.EMAIL_USER}`);
-    console.log(`🌐 Client URL: ${process.env.CLIENT_URL}`);
-    
     const mailOptions = {
       from: `Employee Management System <${process.env.EMAIL_USER}>`,
       to,
       subject,
       html,
-      // Add text version for email clients that don't support HTML
-      text: subject + ' - Please view this email in an HTML-compatible email client.',
     };
 
-    const result = await transport.sendMail(mailOptions);
-    console.log('✅ Email sent successfully to:', to);
-    console.log('📫 Message ID:', result.messageId);
-    console.log('✅ Response:', result.response);
+    await transport.sendMail(mailOptions); // Fixed: changed 'transporter' to 'transport'
+    console.log('Email sent successfully to:', to);
     return true;
   } catch (error) {
-    console.error('❌ Error sending email:', error);
-    
-    // More detailed error logging
-    console.error('🔍 Error details:');
-    console.error('Error code:', error.code);
-    console.error('Error command:', error.command);
-    console.error('Full error object:', JSON.stringify(error, null, 2));
-    
-    // Specific error handling for common issues
-    if (error.code === 'EAUTH') {
-      console.error('🔐 Authentication failed! Please check:');
-      console.error('1. Gmail 2-factor authentication is ENABLED');
-      console.error('2. You are using APP PASSWORD (16 characters), not regular password');
-      console.error('3. App password is generated for "Mail"');
-    }
-    
-    if (error.code === 'EENVELOPE') {
-      console.error('📮 Envelope error - check recipient email address');
-    }
-    
-    throw new Error(`Email could not be sent: ${error.message}`);
+    console.error('Error sending email:', error);
+    throw new Error('Email could not be sent');
   }
 };
 
@@ -224,7 +150,7 @@ export const emailTemplates = {
             </div>
 
             <div style="text-align: center;">
-              <a href="${process.env.CLIENT_URL || 'https://employeeesmanage.vercel.app'}/login" class="button">
+              <a href="${process.env.CLIENT_URL || 'http://localhost:3000'}/login" class="button">
                 🚀 Login to Your Account
               </a>
             </div>
@@ -344,8 +270,8 @@ export const emailTemplates = {
         </div>
       </div>
     </body>
-    </html>
-  `,
+      </html>
+    `,
   
   passwordReset: (user, resetUrl) => `
   <!DOCTYPE html>
@@ -427,5 +353,6 @@ export const emailTemplates = {
     </div>
   </body>
   </html>
-  `
+`
+
 };

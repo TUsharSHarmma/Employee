@@ -1,7 +1,6 @@
 import axios from 'axios';
 
-// ⚠️ FIX THIS LINE - Change from localhost to your Render URL
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://employee-xxcg.onrender.com/api';
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
 
 // Create axios instance
 const api = axios.create({
@@ -9,7 +8,6 @@ const api = axios.create({
   headers: {
     'Content-Type': 'application/json',
   },
-  withCredentials: true, // Add this for CORS with credentials
 });
 
 // Request interceptor to add auth token
@@ -32,21 +30,27 @@ api.interceptors.response.use(
   (error) => {
     if (error.response?.status === 401) {
       localStorage.removeItem('token');
-      localStorage.removeItem('user');
       window.location.href = '/login';
     }
     return Promise.reject(error);
   }
 );
 
-// Attendance API
+// Attendance API - UPDATED WITH ALL FEATURES
 export const attendanceAPI = {
+  // Basic punch in/out
   punchIn: (data) => api.post('/attendance/punch-in', data),
   punchOut: (data) => api.post('/attendance/punch-out', data),
+  
+  // Get attendance records
   getAttendance: (params) => api.get('/attendance', { params }),
   getAttendanceById: (id) => api.get(`/attendance/${id}`),
+  
+  // Edit/Delete functionality
   updateAttendance: (id, data) => api.put(`/attendance/${id}`, data),
   deleteAttendance: (id, data) => api.delete(`/attendance/${id}`, { data }),
+  
+  // Admin specific routes
   getAllAttendance: (params) => api.get('/attendance/admin/all', { params }),
 };
 
@@ -57,7 +61,6 @@ export const usersAPI = {
   createUser: (data) => api.post('/users', data),
   updateUser: (id, data) => api.put(`/users/${id}`, data),
   deleteUser: (id) => api.delete(`/users/${id}`),
-  updateProfile: (data) => api.put('/users/profile/update', data),
 };
 
 // Plants API
